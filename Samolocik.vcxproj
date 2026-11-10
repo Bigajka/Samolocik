@@ -114,7 +114,9 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;assimp-vc145-mtd.lib;</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;assimp-vc145-mtd.lib;user32.lib;
+gdi32.lib
+;shell32.lib;</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)vendor\lib;</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -132,12 +134,27 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)vendor\lib;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>opengl32.lib;glfw3.lib;assimp-vc145-mtd.lib;</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glfw3.lib;assimp-vc145-mtd.lib;user32.lib;
+gdi32.lib
+;shell32.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
+    <Text Include="shaders\basic.frag">
+      <FileType>Document</FileType>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\basic.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Environment\Mesh.h" />
+    <ClInclude Include="Environment\Transform.h" />
+    <ClInclude Include="Environment\Vertex.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="shaders\Shader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
