@@ -6,9 +6,14 @@ in vec3 ObjectColor;
 
 out vec4 FragColor;
 
+uniform vec3 ViewPos;
+uniform vec3 uColor;
+
 void main()
 {
-    vec3 lightPos = vec3(-2.0, 3.0, 4.0);
+    vec3 baseColor = ObjectColor * uColor;
+
+    vec3 lightPos = vec3(0.0, 6.5, 0.0);
 
     vec3 viewPos = vec3(0.0, 0.0, 3.0);
 

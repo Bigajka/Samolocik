@@ -150,10 +150,13 @@ gdi32.lib
     <None Include="shaders\basic.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Core\Camera.h" />
+    <ClInclude Include="Core\Renderer.h" />
+    <ClInclude Include="Core\Transform.h" />
     <ClInclude Include="Environment\Mesh.h" />
-    <ClInclude Include="Environment\Transform.h" />
+    <ClInclude Include="Environment\Room.h" />
+    <ClInclude Include="Environment\SceneObject.h" />
     <ClInclude Include="Environment\Vertex.h" />
-    <ClInclude Include="Renderer.h" />
     <ClInclude Include="shaders\Shader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Pliki nagłówkowe\Core">
+      <UniqueIdentifier>{2e996050-adbc-4590-9927-ee513dbb3fb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Pliki nagłówkowe\Environment">
+      <UniqueIdentifier>{496136ec-77a6-4985-ac23-2d42e603f683}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Pliki nagłówkowe\Shaders">
+      <UniqueIdentifier>{4f147ee7-80af-4ef1-8a4b-0e4737781fe6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -23,30 +32,39 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\basic.vert">
-      <Filter>Pliki źródłowe</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="Environment\Mesh.h">
-      <Filter>Pliki nagłówkowe</Filter>
-    </ClInclude>
-    <ClInclude Include="Environment\Transform.h">
-      <Filter>Pliki nagłówkowe</Filter>
+      <Filter>Pliki nagłówkowe\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Environment\Vertex.h">
-      <Filter>Pliki nagłówkowe</Filter>
+      <Filter>Pliki nagłówkowe\Environment</Filter>
     </ClInclude>
     <ClInclude Include="shaders\Shader.h">
-      <Filter>Pliki nagłówkowe</Filter>
+      <Filter>Pliki nagłówkowe\Shaders</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer.h">
-      <Filter>Pliki nagłówkowe</Filter>
+    <ClInclude Include="Core\Camera.h">
+      <Filter>Pliki nagłówkowe\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Renderer.h">
+      <Filter>Pliki nagłówkowe\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Transform.h">
+      <Filter>Pliki nagłówkowe\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Environment\Room.h">
+      <Filter>Pliki nagłówkowe\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Environment\SceneObject.h">
+      <Filter>Pliki nagłówkowe\Environment</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\basic.frag">
-      <Filter>Pliki źródłowe</Filter>
+      <Filter>Pliki nagłówkowe\Shaders</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\basic.vert">
+      <Filter>Pliki nagłówkowe\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

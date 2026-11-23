@@ -1,37 +1,24 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <iostream>
-#include "Environment/Mesh.h"
-#include "shaders/Shader.h"
-#include "Renderer.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
+
+#include "Shaders/Shader.h"
+#include "Core/Renderer.h"
+#include "Core/Camera.h"
+#include "Environment/Room.h"
 
 constexpr unsigned int WINDOW_WIDTH = 1280;
 constexpr unsigned int WINDOW_HEIGHT = 720;
 
-//std::vector<Vertex> vertices =
-//{
-//    { glm::vec3(-0.5f, -0.5f, 0.0f) },
-//    { glm::vec3(0.5f, -0.5f, 0.0f) },
-//    { glm::vec3(0.0f,  0.5f, 0.0f) }
-//};
-//
-//std::vector<unsigned int> indices =
-//{
-//    0, 1, 2
-//};
-//
-//glm::vec3 color = glm::vec3(1.0f, 0.0f, 0.0f);
-std::vector<Vertex> vertices;
-std::vector<unsigned int> indices;
-
-glm::mat4 model = glm::mat4(1.0f);
-glm::mat4 view = glm::mat4(1.0f);
+Camera camera(glm::vec3(0.0f, 2.5f, 4.0f));
 glm::mat4 projection = glm::mat4(1.0f);
+
 float rotationX = 0.0f;
 float rotationY = 0.0f;
-
-Renderer renderer;
+float lastX = WINDOW_WIDTH / 2.0f;
+float lastY = WINDOW_HEIGHT / 2.0f;
+bool firstMouse = true;
 
 void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -43,98 +30,35 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     }
 }
 
-void AddFace(
-    glm::vec3 normal,
-    glm::vec3 color,
-    glm::vec3 a,
-    glm::vec3 b,
-    glm::vec3 c,
-    glm::vec3 d
-)
+void MouseCallback(GLFWwindow* window, double xposIn, double yposIn)
 {
-    unsigned int start = static_cast<unsigned int>(vertices.size());
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
 
-    vertices.push_back({ a, normal, color });
-    vertices.push_back({ b, normal, color });
-    vertices.push_back({ c, normal, color });
-    vertices.push_back({ d, normal, color });
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
 
-    indices.insert(indices.end(),
-        {
-            start, start + 1, start + 2,
-            start, start + 2, start + 3
-        });
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-void CreateCube()
+void ProcessInput(GLFWwindow* window, float deltaTime)
 {
-    float s = 0.5f;
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
 
-    // front
-    AddFace(
-        glm::vec3(0, 0, 1),
-        glm::vec3(0, 0, 1),
-
-        glm::vec3(-s, -s, s),
-        glm::vec3(s, -s, s),
-        glm::vec3(s, s, s),
-        glm::vec3(-s, s, s)
-    );
-
-    // back
-    AddFace(
-        glm::vec3(0, 0, -1),
-        glm::vec3(1, 1, 0),
-
-        glm::vec3(-s, -s, -s),
-        glm::vec3(-s, s, -s),
-        glm::vec3(s, s, -s),
-        glm::vec3(s, -s, -s)
-    );
-
-    // right
-    AddFace(
-        glm::vec3(1, 0, 0),
-        glm::vec3(1, 0, 0),
-
-        glm::vec3(s, -s, -s),
-        glm::vec3(s, s, -s),
-        glm::vec3(s, s, s),
-        glm::vec3(s, -s, s)
-    );
-
-    // left
-    AddFace(
-        glm::vec3(-1, 0, 0),
-        glm::vec3(0, 1, 1),
-
-        glm::vec3(-s, -s, -s),
-        glm::vec3(-s, -s, s),
-        glm::vec3(-s, s, s),
-        glm::vec3(-s, s, -s)
-    );
-
-    // up
-    AddFace(
-        glm::vec3(0, 1, 0),
-        glm::vec3(0, 1, 0),
-
-        glm::vec3(-s, s, -s),
-        glm::vec3(-s, s, s),
-        glm::vec3(s, s, s),
-        glm::vec3(s, s, -s)
-    );
-
-    // down
-    AddFace(
-        glm::vec3(0, -1, 0),
-        glm::vec3(1, 0, 1),
-
-        glm::vec3(-s, -s, -s),
-        glm::vec3(s, -s, -s),
-        glm::vec3(s, -s, s),
-        glm::vec3(-s, -s, s)
-    );
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
 }
 
 int main()
@@ -149,7 +73,6 @@ int main()
     // OpenGL version and profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-
     glfwWindowHint(
         GLFW_OPENGL_PROFILE,
         GLFW_OPENGL_CORE_PROFILE
@@ -158,7 +81,7 @@ int main()
     GLFWwindow* window = glfwCreateWindow(
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
-        "OpenGL Renderer",
+        "Samolocik 3D",
         nullptr,
         nullptr
     );
@@ -185,6 +108,8 @@ int main()
     }
 
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, MouseCallback);
 
     // Initial viewport
     int width, height;
@@ -193,13 +118,6 @@ int main()
         window,
         &width,
         &height
-    );
-
-    glViewport(0, 0, width, height);
-    view = glm::lookAt(
-        glm::vec3(0.0f, 0.0f, 3.0f),
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.0f, 1.0f, 0.0f)
     );
 
     projection = glm::perspective(
@@ -212,11 +130,9 @@ int main()
     // OpenGL state
     glEnable(GL_DEPTH_TEST);
 
-    //Mesh* triangle = new Mesh(vertices, indices);
-    CreateCube();
-    Mesh* cube = new Mesh(vertices, indices);
-
-    Shader* shader = new Shader("Shaders/basic.vert", "Shaders/basic.frag");
+    Renderer renderer;
+    Shader shader("Shaders/basic.vert", "Shaders/basic.frag");
+    Room room;
 
     // Render loop
     float lastFrame = (float)glfwGetTime();
@@ -226,61 +142,17 @@ int main()
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        float rotationSpeed = 45.0f;
-
-        // Input
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        {
-            rotationX -= rotationSpeed * deltaTime;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        {
-            rotationX += rotationSpeed * deltaTime;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        {
-            rotationY -= rotationSpeed * deltaTime;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        {
-            rotationY += rotationSpeed * deltaTime;
-        }
-
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        {
-            glfwSetWindowShouldClose(window, true);
-        }
+        ProcessInput(window, deltaTime);
 
         // Clear framebuffer
-        //glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-
+        glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        model = glm::mat4(1.0f);
-
-        model = glm::rotate(model, glm::radians(rotationX), glm::vec3(1.0f, 0.0f, 0.0f));
-
-        model = glm::rotate(model, glm::radians(rotationY), glm::vec3(0.0f, 1.0f, 0.0f));
-
-        renderer.Draw(
-            *cube,
-            *shader,
-            model,
-            view,
-            projection
-        );
+        room.Draw(renderer, shader, camera.GetViewMatrix(), projection, camera.Position);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // Have to be deleted before GL context is destroyed
-    delete cube;
-    delete shader;
 
     glfwDestroyWindow(window);
     glfwTerminate();
