@@ -7,6 +7,7 @@
 #include "Core/Renderer.h"
 #include "Core/Camera.h"
 #include "Environment/Room.h"
+#include "Model.h"
 
 constexpr unsigned int WINDOW_WIDTH = 1280;
 constexpr unsigned int WINDOW_HEIGHT = 720;
@@ -134,6 +135,8 @@ int main()
     Shader shader("Shaders/basic.vert", "Shaders/basic.frag");
     Room room;
 
+    Model plane("Model/samolot.fbx");
+
     // Render loop
     float lastFrame = (float)glfwGetTime();
     while (!glfwWindowShouldClose(window))
@@ -149,6 +152,17 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         room.Draw(renderer, shader, camera.GetViewMatrix(), projection, camera.Position);
+
+        glm::vec3 planePos = camera.Position + camera.Front * 1.5f - camera.Up * 0.4f;
+
+        glm::mat4 planeModel = glm::mat4(1.0f);
+        planeModel = glm::translate(planeModel, planePos);
+
+        planeModel = glm::rotate(planeModel, glm::radians(-camera.Yaw + 90.0f), glm::vec3(0.0f, 2.0f, 0.0f));
+        planeModel = glm::rotate(planeModel, glm::radians(camera.Pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+        planeModel = glm::scale(planeModel, glm::vec3(0.0002f));
+
+        plane.Draw(renderer, shader, planeModel, camera.GetViewMatrix(), projection, camera.Position, glm::vec3(0.9f, 0.2f, 0.2f));
 
         glfwSwapBuffers(window);
         glfwPollEvents();

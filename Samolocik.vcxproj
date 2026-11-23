@@ -157,6 +157,7 @@ gdi32.lib
     <ClInclude Include="Environment\Room.h" />
     <ClInclude Include="Environment\SceneObject.h" />
     <ClInclude Include="Environment\Vertex.h" />
+    <ClInclude Include="Model.h" />
     <ClInclude Include="shaders\Shader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
