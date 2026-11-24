@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -10,6 +9,8 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <algorithm>
+#include <cfloat>
 
 #include "Environment/Mesh.h"
 #include "Core/Renderer.h"
@@ -46,7 +47,10 @@ private:
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
             path,
-            aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_FlipUVs
+            aiProcess_Triangulate |
+            aiProcess_GenSmoothNormals |
+            aiProcess_FlipUVs |
+            aiProcess_PreTransformVertices
         );
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
@@ -55,30 +59,46 @@ private:
             return;
         }
 
-        ProcessNode(scene->mRootNode, scene);
-        std::cout << "Zaladowano model: " << path << " (siatek: " << meshes.size() << ")\n";
-    }
+        glm::vec3 minB(FLT_MAX), maxB(-FLT_MAX);
+        unsigned int totalVertices = 0;
 
-    void ProcessNode(aiNode* node, const aiScene* scene)
-    {
-        for (unsigned int i = 0; i < node->mNumMeshes; i++)
+        for (unsigned int i = 0; i < scene->mNumMeshes; i++)
         {
-            aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(ProcessMesh(mesh, scene));
+            aiMesh* m = scene->mMeshes[i];
+            totalVertices += m->mNumVertices;
+            for (unsigned int v = 0; v < m->mNumVertices; v++)
+            {
+                minB.x = std::min(minB.x, m->mVertices[v].x);
+                minB.y = std::min(minB.y, m->mVertices[v].y);
+                minB.z = std::min(minB.z, m->mVertices[v].z);
+
+                maxB.x = std::max(maxB.x, m->mVertices[v].x);
+                maxB.y = std::max(maxB.y, m->mVertices[v].y);
+                maxB.z = std::max(maxB.z, m->mVertices[v].z);
+            }
         }
 
-        for (unsigned int i = 0; i < node->mNumChildren; i++)
+        glm::vec3 center = (minB + maxB) * 0.5f;
+        glm::vec3 size = maxB - minB;
+        float maxExtent = std::max({ size.x, size.y, size.z });
+        float normScale = (maxExtent > 0.0f) ? (1.0f / maxExtent) : 1.0f;
+
+        std::cout << "Zaladowano model: " << path
+            << " | siatek: " << scene->mNumMeshes
+            << " | wierzcholkow: " << totalVertices << '\n';
+
+        for (unsigned int i = 0; i < scene->mNumMeshes; i++)
         {
-            ProcessNode(node->mChildren[i], scene);
+            meshes.push_back(ProcessMeshNormalized(scene->mMeshes[i], scene, center, normScale));
         }
     }
 
-    std::unique_ptr<Mesh> ProcessMesh(aiMesh* mesh, const aiScene* scene)
+    std::unique_ptr<Mesh> ProcessMeshNormalized(
+        aiMesh* mesh, const aiScene* scene, glm::vec3 center, float normScale)
     {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
 
-        // Domyślny kolor materiału z pliku FBX (jeśli istnieje)
         glm::vec3 matColor(1.0f);
         if (mesh->mMaterialIndex >= 0)
         {
@@ -93,7 +113,8 @@ private:
         for (unsigned int i = 0; i < mesh->mNumVertices; i++)
         {
             Vertex vertex;
-            vertex.Position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+            glm::vec3 pos(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+            vertex.Position = (pos - center) * normScale;
 
             if (mesh->HasNormals())
                 vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
@@ -108,9 +129,7 @@ private:
         {
             aiFace face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; j++)
-            {
                 indices.push_back(face.mIndices[j]);
-            }
         }
 
         return std::make_unique<Mesh>(vertices, indices);

@@ -150,6 +150,7 @@ gdi32.lib
     <None Include="shaders\basic.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CollectibleManager.h" />
     <ClInclude Include="Core\Camera.h" />
     <ClInclude Include="Core\Renderer.h" />
     <ClInclude Include="Core\Transform.h" />
@@ -159,6 +160,7 @@ gdi32.lib
     <ClInclude Include="Environment\Vertex.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="shaders\Shader.h" />
+    <ClInclude Include="TextRenderer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

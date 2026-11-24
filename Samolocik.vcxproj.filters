@@ -62,6 +62,12 @@
     <ClInclude Include="Model.h">
       <Filter>Pliki nagłówkowe\Environment</Filter>
     </ClInclude>
+    <ClInclude Include="CollectibleManager.h">
+      <Filter>Pliki nagłówkowe\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="TextRenderer.h">
+      <Filter>Pliki nagłówkowe\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\basic.frag">
