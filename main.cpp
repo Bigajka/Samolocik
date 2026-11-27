@@ -3,10 +3,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <string>
+#include <algorithm>
+#include <cmath>
 
 #include "Shaders/Shader.h"
 #include "Core/Renderer.h"
 #include "Core/Camera.h"
+#include "Core/Plane.h"
 #include "Core/TextRenderer.h"
 #include "Environment/Room.h"
 #include "Environment/CollectibleManager.h"
@@ -18,9 +21,15 @@ constexpr unsigned int WINDOW_HEIGHT = 720;
 int currentWidth = WINDOW_WIDTH;
 int currentHeight = WINDOW_HEIGHT;
 
-Camera camera(glm::vec3(0.0f, 2.5f, 4.0f));
+Camera camera(glm::vec3(0.0f, 3.0f, 5.5f));
+Plane playerPlane(glm::vec3(0.0f, 2.5f, 3.5f));
 glm::mat4 projection = glm::mat4(1.0f);
 
+// Kąty rozglądania się kamerą wokół samolotu
+float camYawOffset = 0.0f;
+float camPitchOffset = 15.0f;
+
+float currentFov = 45.0f;
 float lastX = WINDOW_WIDTH / 2.0f;
 float lastY = WINDOW_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -34,7 +43,6 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height)
     {
         currentWidth = width;
         currentHeight = height;
-        projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
     }
 }
 
@@ -57,20 +65,45 @@ void MouseCallback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    const float lookSensitivity = 0.15f;
+    camYawOffset += xoffset * lookSensitivity;
+    camPitchOffset -= yoffset * lookSensitivity;
+    camPitchOffset = std::clamp(camPitchOffset, -35.0f, 65.0f);
 }
 
-void ProcessInput(GLFWwindow* window, float deltaTime)
+void UpdateOrbitCamera(float deltaTime)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+    const float distance = 2.4f;
 
-    if (isWin) return; // Zatrzymanie sterowania samolotem po wygranej
+    float totalYaw = playerPlane.Yaw + camYawOffset;
+    float yawRad = glm::radians(totalYaw);
+    float pitchRad = glm::radians(camPitchOffset);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
+    glm::vec3 offset;
+    offset.x = -std::cos(yawRad) * std::cos(pitchRad) * distance;
+    offset.y = std::sin(pitchRad) * distance;
+    offset.z = -std::sin(yawRad) * std::cos(pitchRad) * distance;
+
+    glm::vec3 desiredCamPos = playerPlane.Position + offset;
+
+    camera.Position = glm::mix(camera.Position, desiredCamPos, std::min(1.0f, deltaTime * 14.0f));
+
+    glm::vec3 lookTarget = playerPlane.Position + glm::vec3(0.0f, 0.2f, 0.0f);
+    camera.Front = glm::normalize(lookTarget - camera.Position);
+    camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    float targetFov = glm::mix(42.0f, 52.0f, playerPlane.GetSpeedFactor());
+    currentFov = glm::mix(currentFov, targetFov, std::min(1.0f, deltaTime * 5.0f));
+
+    if (currentWidth > 0 && currentHeight > 0)
+    {
+        projection = glm::perspective(
+            glm::radians(currentFov),
+            static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+            0.1f,
+            100.0f
+        );
+    }
 }
 
 int main()
@@ -113,8 +146,6 @@ int main()
     currentWidth = width;
     currentHeight = height;
 
-    projection = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
-
     glEnable(GL_DEPTH_TEST);
 
     Renderer renderer;
@@ -122,7 +153,7 @@ int main()
     Shader shader("Shaders/basic.vert", "Shaders/basic.frag");
     Room room;
 
-    Model plane("Model/samolot.fbx");
+    Model planeModelAsset("Model/samolot.fbx");
     Model cat("Model/kot.fbx");
     CollectibleManager collectibles("Model/moneta.fbx");
     int score = 0;
@@ -131,14 +162,35 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = (float)glfwGetTime();
-        float deltaTime = currentFrame - lastFrame;
+        float deltaTime = std::min(currentFrame - lastFrame, 0.05f);
         lastFrame = currentFrame;
 
-        ProcessInput(window, deltaTime);
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
+
+        if (!isWin)
+        {
+            bool pitchUp = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
+            bool pitchDown = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
+            bool turnLeft = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+            bool turnRight = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+            bool accelerate = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+            bool decelerate = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+
+            playerPlane.Update(deltaTime, pitchUp, pitchDown, turnLeft, turnRight, accelerate, decelerate);
+            UpdateOrbitCamera(deltaTime);
+
+            collectibles.Update(deltaTime, playerPlane.Position, score);
+            if (collectibles.GetRemainingCount() == 0)
+            {
+                isWin = true;
+            }
+        }
 
         glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Pokój i kot
         room.Draw(renderer, shader, camera.GetViewMatrix(), projection, camera.Position);
 
         glm::mat4 catModel = glm::mat4(1.0f);
@@ -147,30 +199,21 @@ int main()
         catModel = glm::scale(catModel, glm::vec3(0.85f));
         cat.Draw(renderer, shader, catModel, camera.GetViewMatrix(), projection, camera.Position, glm::vec3(0.85f, 0.45f, 0.18f));
 
-        // Samolot
-        glm::vec3 planePos = camera.Position + camera.Front * 1.5f - camera.Up * 0.4f;
-
-        glm::mat4 planeModel = glm::mat4(1.0f);
-        planeModel = glm::translate(planeModel, planePos);
-        planeModel = glm::rotate(planeModel, glm::radians(-camera.Yaw + 90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        planeModel = glm::rotate(planeModel, glm::radians(camera.Pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-        planeModel = glm::scale(planeModel, glm::vec3(0.8f));
-
-        if (!isWin)
-        {
-            collectibles.Update(deltaTime, planePos, score);
-            if (collectibles.GetRemainingCount() == 0)
-            {
-                isWin = true;
-            }
-        }
-
+        // Monety oraz samolot
         collectibles.Draw(renderer, shader, camera.GetViewMatrix(), projection, camera.Position);
-        plane.Draw(renderer, shader, planeModel, camera.GetViewMatrix(), projection, camera.Position, glm::vec3(0.9f, 0.2f, 0.2f));
+        planeModelAsset.Draw(
+            renderer,
+            shader,
+            playerPlane.GetModelMatrix(),
+            camera.GetViewMatrix(),
+            projection,
+            camera.Position,
+            glm::vec3(0.9f, 0.2f, 0.2f)
+        );
 
+        // Interfejs 2D
         textRenderer.Begin(currentWidth, currentHeight);
 
-        // Pasek wyników w lewym górnym rogu
         std::string scoreText = "SCORE: " + std::to_string(score);
         std::string coinsText = "COINS LEFT: " + std::to_string(collectibles.GetRemainingCount());
 
@@ -178,9 +221,26 @@ int main()
         textRenderer.DrawText(scoreText, 28.0f, 26.0f, 3.5f, glm::vec3(1.0f, 0.85f, 0.15f));
         textRenderer.DrawText(coinsText, 28.0f, 62.0f, 3.0f, glm::vec3(0.95f, 0.95f, 0.95f));
 
+        // Panel sterowania
+        if (!isWin)
+        {
+            const float boxWidth = 200.0f;
+            const float boxHeight = 110.0f;
+            const float boxX = 15.0f;
+            const float boxY = static_cast<float>(currentHeight) - boxHeight - 15.0f;
+            const float textX = boxX + 14.0f;
+            const float scale = 2.2f;
+
+            textRenderer.DrawRect(boxX, boxY, boxWidth, boxHeight, glm::vec4(0.0f, 0.0f, 0.0f, 0.55f));
+
+            textRenderer.DrawText("WASD: STEER", textX, boxY + 14.0f, scale, glm::vec3(0.95f, 0.95f, 0.95f));
+            textRenderer.DrawText("SHIFT: BOOST", textX, boxY + 36.0f, scale, glm::vec3(0.95f, 0.95f, 0.95f));
+            textRenderer.DrawText("SPACE: BRAKE", textX, boxY + 58.0f, scale, glm::vec3(0.95f, 0.95f, 0.95f));
+            textRenderer.DrawText("MOUSE: LOOK", textX, boxY + 80.0f, scale, glm::vec3(0.95f, 0.95f, 0.95f));
+        }
+
         if (isWin)
         {
-            // przyciemnienie całego ekranu
             textRenderer.DrawRect(0.0f, 0.0f, static_cast<float>(currentWidth), static_cast<float>(currentHeight), glm::vec4(0.0f, 0.0f, 0.0f, 0.6f));
 
             std::string winText = "WIN!";
@@ -188,7 +248,6 @@ int main()
             float winX = (currentWidth - textRenderer.GetTextWidth(winText, winScale)) * 0.5f;
             float winY = (currentHeight - textRenderer.GetTextHeight(winScale)) * 0.5f - 30.0f;
 
-            // złoty napis WIN!
             textRenderer.DrawText(winText, winX + 8.0f, winY + 8.0f, winScale, glm::vec3(0.15f, 0.1f, 0.0f));
             textRenderer.DrawText(winText, winX, winY, winScale, glm::vec3(1.0f, 0.84f, 0.1f));
 
